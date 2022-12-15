@@ -4,17 +4,6 @@ import scala.collection.mutable
 import scala.util.Try
 
 object D5 extends Base {
-  override def sample: String =
-    """    [D]    
-      |[N] [C]    
-      |[Z] [M] [P]
-      | 1   2   3 
-      |
-      |move 1 from 2 to 1
-      |move 3 from 1 to 3
-      |move 2 from 2 to 1
-      |move 1 from 1 to 2""".stripMargin
-
   case class Crates(stacks: Map[String, List[String]]) {
     private def doMove(move: Move, reverse: Boolean): Crates = (for {
       from <- stacks.get(move.from.toString).map(_.reverse)
@@ -29,6 +18,13 @@ object D5 extends Base {
     def move(move: Move): Crates = doMove(move, reverse = false)
 
     def moveAndKeepOrder(move: Move): Crates = doMove(move, reverse = true)
+
+    def head: String = stacks
+      .map(c => c._1.toInt -> c._2.lastOption.getOrElse(" "))
+      .toList
+      .sortBy(_._1)
+      .map(_._2)
+      .mkString
   }
 
   object Crates {
@@ -83,34 +79,20 @@ object D5 extends Base {
     (crates, moves)
   }
 
-  def part1(input: (Crates, List[Move])): Unit = {
-    val (crates, moves) = input
+  def part1(value: String): String = {
+    val (crates, moves) = parse(value)
     val result = moves.foldLeft(crates) { (acc, c) => acc.move(c) }
-    println(
-      result.stacks
-        .map(c => c._1.toInt -> c._2.lastOption.getOrElse(" "))
-        .toList
-        .sortBy(_._1)
-        .map(_._2)
-        .mkString
-    )
+    result.head
   }
 
-  def part2(input: (Crates, List[Move])): Unit = {
-    val (crates, moves) = input
+  def part2(value: String): String = {
+    val (crates, moves) = parse(value)
     val result = moves.foldLeft(crates) { (acc, c) => acc.moveAndKeepOrder(c) }
-    println(
-      result.stacks
-        .map(c => c._1.toInt -> c._2.lastOption.getOrElse(" "))
-        .toList
-        .sortBy(_._1)
-        .map(_._2)
-        .mkString
-    )
+    result.head
   }
 
   def main(args: Array[String]): Unit = {
-    part2(parse(read))
+    println(part2(read))
   }
 
 }

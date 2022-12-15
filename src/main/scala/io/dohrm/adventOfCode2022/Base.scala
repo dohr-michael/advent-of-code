@@ -6,7 +6,6 @@ import scala.io.Source
 import scala.reflect.ClassTag
 
 trait Base { self =>
-  def sample: String
   def read: String = {
     val source = Source.fromFile(s"data/${self.getClass.getSimpleName.toLowerCase.replaceAll("\\$", "")}.txt")
     try {
