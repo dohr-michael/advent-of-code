@@ -1,10 +1,6 @@
 package io.dohrm.adventOfCode2022
 
 object D2 extends Base {
-  override def sample: String =
-    """A Y
-    |B X
-    |C Z""".stripMargin
 
   enum Result(val player: String, val value: Int):
     case Lose extends Result("X", 0)
@@ -38,7 +34,7 @@ object D2 extends Base {
           case Choice.Paper    => Choice.Scissors
           case Choice.Scissors => Choice.Rock
 
-  private def part1(value: String): Int = {
+  private def part1Run(value: String): Int = {
     val s = value.split(' ').map(_.trim)
     if (s.length != 2) return 0
     (Choice.values.find(_.opponent == s(0)), Choice.values.find(_.player == s(1))) match
@@ -46,7 +42,7 @@ object D2 extends Base {
       case _                  => 0
   }
 
-  private def part2(value: String): Int = {
+  private def part2Run(value: String): Int = {
     val s = value.split(' ').map(_.trim)
     if (s.length != 2) return 0
     (Choice.values.find(_.opponent == s(0)), Result.values.find(_.player == s(1))) match
@@ -57,9 +53,10 @@ object D2 extends Base {
   private def readAll(fn: String => Int, value: String): Int =
     value.split("\n").foldLeft(0)(_ + fn(_))
 
-  // 15572
+  def part1(value: String): Int = readAll(part1Run, value)
+  def part2(value: String): Int = readAll(part2Run, value)
 
   def main(args: Array[String]): Unit =
-    readAll(part2, read)
+    println(part2(read))
 
 }

@@ -2,14 +2,6 @@ package io.dohrm.adventOfCode2022
 import scala.util.Try
 
 object D4 extends Base {
-
-  override def sample: String =
-    """2-4,6-8
-      |2-3,4-5
-      |5-7,7-9
-      |2-8,3-7
-      |6-6,4-6
-      |2-6,4-8""".stripMargin
   case class Elf(from: Int, to: Int) {
     private def fullyIncluded(a: Elf, b: Elf): Boolean =
       b.from >= a.from && b.from <= a.to && b.to >= a.from && b.to <= a.to
@@ -45,22 +37,17 @@ object D4 extends Base {
     }
   }
 
-  def part1(elves: List[Elves]): Unit = println(elves.count(_.fullyIncluded))
-  def part2(elves: List[Elves]): Unit = println(elves.count(_.overlapped))
-  def process(fn: List[Elves] => Unit, value: String): Unit =
-    fn(
-      value
-        .split('\n')
-        .map(_.trim)
-        .flatMap(Elves(_).toList)
-        .toList
-    )
+  def parse(value: String): List[Elves] = value
+    .split('\n')
+    .map(_.trim)
+    .flatMap(Elves(_).toList)
+    .toList
+
+  def part1(value: String): Int = parse(value).count(_.fullyIncluded)
+  def part2(value: String): Int = parse(value).count(_.overlapped)
 
   def main(args: Array[String]): Unit = {
-    process(
-      part2,
-      read
-    )
+    println(part2(read))
   }
 
 }

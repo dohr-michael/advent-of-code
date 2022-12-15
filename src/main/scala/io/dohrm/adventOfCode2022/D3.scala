@@ -1,7 +1,7 @@
 package io.dohrm.adventOfCode2022
 
 object D3 extends Base {
-  override def sample: String =
+  def sample: String =
     """vJrwpWtwJgWrhcsFMMfFFhFp
       |jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL
       |PmmdzqPrVvPwwTWBwg
@@ -23,33 +23,26 @@ object D3 extends Base {
     list.substring(list.length / 2).toCharArray.map(c => c -> getPriority(c)).sortBy(_._1)
   )
 
-  def part1(items: List[Rucksack]): Unit =
-    println(items.flatMap(_.findItem.toList).map(_._2).sum)
+  def parse(value: String): List[Rucksack] = value.split("\n").map(_.trim).map(rucksack).toList
 
-  def part2(items: List[Rucksack]): Unit = {
-    println(
-      items
-        .grouped(3)
-        .flatMap { items =>
-          items
-            .flatMap(v => v.allItems.distinct)
-            .groupBy(v => v)
-            .find(_._2.size >= 3)
-            .map(_._1._2)
-            .toList
-        }
-        .sum
-    )
+  def part1(value: String): Int =
+    parse(value).flatMap(_.findItem.toList).map(_._2).sum
+
+  def part2(value: String): Int = {
+    parse(value)
+      .grouped(3)
+      .flatMap { items =>
+        items
+          .flatMap(v => v.allItems.distinct)
+          .groupBy(v => v)
+          .find(_._2.size >= 3)
+          .map(_._1._2)
+          .toList
+      }
+      .sum
   }
-  def run(fn: List[Rucksack] => Unit, value: String): Unit =
-    fn(
-      value.split("\n").map(_.trim).map(rucksack).toList
-    )
 
   def main(args: Array[String]): Unit =
-    run(
-      part2,
-      read
-    )
+    println(part2(read))
 
 }
