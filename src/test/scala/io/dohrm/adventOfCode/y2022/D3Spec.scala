@@ -1,4 +1,4 @@
-package io.dohrm.adventOfCode2022
+package io.dohrm.adventOfCode.y2022
 
 class D3Spec extends munit.FunSuite {
   val sample: String =

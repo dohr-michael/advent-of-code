@@ -1,4 +1,5 @@
-package io.dohrm.adventOfCode2022
+package io.dohrm.adventOfCode.y2022
+
 import scala.util.Try
 
 object D4 extends Base {

@@ -1,4 +1,5 @@
-package io.dohrm.adventOfCode2022
+package io.dohrm.adventOfCode.y2022
+
 import scala.collection.mutable
 
 object D6 extends Base {
