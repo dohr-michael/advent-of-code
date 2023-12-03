@@ -32,7 +32,8 @@ object D1 extends Base {
       .toList
   }
 
-  def main(args: Array[String]): Unit =
+  def main(args: Array[String]): Unit = {
     println(part1(read))
     println(part2(read))
+  }
 }
