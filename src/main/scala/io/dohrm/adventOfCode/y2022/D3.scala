@@ -1,4 +1,4 @@
-package io.dohrm.adventOfCode2022
+package io.dohrm.adventOfCode.y2022
 
 object D3 extends Base {
   def sample: String =

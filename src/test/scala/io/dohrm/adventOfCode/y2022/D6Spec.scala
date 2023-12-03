@@ -1,4 +1,4 @@
-package io.dohrm.adventOfCode2022
+package io.dohrm.adventOfCode.y2022
 
 class D6Spec extends munit.FunSuite {
   val samples: List[(String, Int, Int)] = List(
