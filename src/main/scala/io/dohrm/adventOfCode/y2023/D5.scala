@@ -10,7 +10,7 @@ object D5 extends Base {
   implicit def ec: ExecutionContext = scala.concurrent.ExecutionContext.global
   case class Range(destination: Long, source: Long, length: Long) {
     def bounded(value: Long): Boolean = value >= source && value <= source + length
-    def boundedRevert(value: Long): Boolean = value >= destination && value <= destination + length
+    def boundedRevert(value: Long): Boolean = destination <= value && value < destination + length
   }
 
   case class Parameters(
@@ -80,27 +80,18 @@ object D5 extends Base {
 
     lazy val lowestParameterFromParis: Option[Parameters] = {
       val location = new AtomicLong(0L)
-      val results = (1 until 16).par
-        .map { _ =>
-          var current: Option[Parameters] = None
-          var finished = false
-          while (!finished) {
-            val loc = location.getAndIncrement()
-            val p = getParametersRevert(loc)
-            if (seedsPairs.exists(bound => bound._1 <= p.seed && p.seed <= (bound._1 + bound._2))) {
-              if (getParameters(p.seed) == p) {
-                current = Some(p)
-                finished = true
-              }
-            }
-          }
-          current
+      var loc = 0
+      var current: Option[Parameters] = None
+      var finished = false
+      while (!finished) {
+        val p = getParametersRevert(loc)
+        if (seedsPairs.exists(bound => bound._1 <= p.seed && p.seed <= (bound._1 + bound._2))) {
+          current = Some(p)
+          finished = true
         }
-        .collect { case Some(x) => x }
-      results.foreach(c => println(c.location))
-      results.tail.toList.foldLeft(results.headOption) { (acc, c) =>
-        acc.filter(_.location < c.location).orElse(Some(c))
+        loc += 1
       }
+      current
     }
   }
 
