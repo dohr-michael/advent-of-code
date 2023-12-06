@@ -1,21 +1,20 @@
 package io.dohrm.adventOfCode.y2023
 
+import java.util.concurrent.atomic.AtomicLong
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.collection.parallel.CollectionConverters.*
 
 object D5 extends Base {
   implicit def ec: ExecutionContext = scala.concurrent.ExecutionContext.global
   case class Range(destination: Long, source: Long, length: Long) {
-    def sourceToDestination(value: Long): Option[Long] =
-      if (value >= source && value <= source + length) {
-        Some(destination + value - source)
-      } else {
-        None
-      }
+    def bounded(value: Long): Boolean = value >= source && value <= source + length
+    def boundedRevert(value: Long): Boolean = value >= destination && value <= destination + length
   }
 
   case class Parameters(
+      seed: Long,
       soil: Long,
       fertilizer: Long,
       water: Long,
@@ -29,7 +28,10 @@ object D5 extends Base {
       parameters: Map[String, List[Range]] = Map.empty
   ) {
     lazy val seedsPairs: List[(Long, Long)] =
-      seeds.sliding(2).map(v => v.head -> v.last).toList
+      seeds
+        .sliding(2, 2)
+        .map(v => v.head -> v.last)
+        .toList
     def seedToSoil: List[Range] = parameters.getOrElse("seed-to-soil", Nil)
     def soilToFertilizer: List[Range] = parameters.getOrElse("soil-to-fertilizer", Nil)
     def fertilizerToWater: List[Range] = parameters.getOrElse("fertilizer-to-water", Nil)
@@ -39,59 +41,66 @@ object D5 extends Base {
     def humidityToLocation: List[Range] = parameters.getOrElse("humidity-to-location", Nil)
 
     private def items(toFind: Long, reference: List[Range]): Long = {
-      val base = reference
-        .map(_.sourceToDestination(toFind))
-        .collect { case Some(x) => x }
-      if (base.isEmpty) {
-        toFind
-      } else {
-        base.head
+      val base = reference.find(_.bounded(toFind))
+      base.map(v => v.destination + (toFind - v.source)).getOrElse(toFind)
+    }
+
+    private def itemsRevert(toFind: Long, reference: List[Range]): Long = {
+      val base = reference.find(_.boundedRevert(toFind))
+      base.map(v => v.source + (toFind - v.destination)).getOrElse(toFind)
+    }
+
+    private def getParameters(seed: Long): Parameters = {
+      val soil = items(seed, seedToSoil)
+      val fertilizer = items(soil, soilToFertilizer)
+      val water = items(fertilizer, fertilizerToWater)
+      val light = items(water, waterToLight)
+      val temperature = items(light, lightToTemperature)
+      val humidity = items(temperature, temperatureToHumidity)
+      val location = items(humidity, humidityToLocation)
+      Parameters(seed, soil, fertilizer, water, light, temperature, humidity, location)
+    }
+
+    private def getParametersRevert(location: Long): Parameters = {
+      val humidity = itemsRevert(location, humidityToLocation)
+      val temperature = itemsRevert(humidity, temperatureToHumidity)
+      val light = itemsRevert(temperature, lightToTemperature)
+      val water = itemsRevert(light, waterToLight)
+      val fertilizer = itemsRevert(water, fertilizerToWater)
+      val soil = itemsRevert(fertilizer, soilToFertilizer)
+      val seed = itemsRevert(soil, seedToSoil)
+      Parameters(seed, soil, fertilizer, water, light, temperature, humidity, location)
+    }
+
+    lazy val lowestParameter: Option[Parameters] =
+      seeds.foldLeft[Option[Parameters]](None) { (acc, seed) =>
+        val p = getParameters(seed)
+        acc.filter(_.location < p.location).orElse(Some(p))
       }
-    }
 
-    lazy val resultsFromSeeds: Map[Long, Parameters] = {
-      (for {
-        seed <- seeds
-        soil = items(seed, seedToSoil)
-        fertilizer = items(soil, soilToFertilizer)
-        water = items(fertilizer, fertilizerToWater)
-        light = items(water, waterToLight)
-        temperature = items(light, lightToTemperature)
-        humidity = items(temperature, temperatureToHumidity)
-        location = items(humidity, humidityToLocation)
-      } yield seed -> Parameters(soil, fertilizer, water, light, temperature, humidity, location)).toMap
-    }
-
-    lazy val resultsFromPairs: Future[List[Parameters]] = {
-      Future
-        .traverse(seedsPairs) { seedP =>
-          Future {
-            var param: Option[Parameters] = None
-            var seed = seedP._1
-            while (seed <= seedP._2 + seedP._1) {
-              val soil = items(seed, seedToSoil)
-              val fertilizer = items(soil, soilToFertilizer)
-              val water = items(fertilizer, fertilizerToWater)
-              val light = items(water, waterToLight)
-              val temperature = items(light, lightToTemperature)
-              val humidity = items(temperature, temperatureToHumidity)
-              val location = items(humidity, humidityToLocation)
-              val p = Parameters(
-                soil,
-                fertilizer,
-                water,
-                light,
-                temperature,
-                humidity,
-                location
-              )
-              param = param.filter(_.location < p.location).orElse(Some(p))
-              seed += 1
+    lazy val lowestParameterFromParis: Option[Parameters] = {
+      val location = new AtomicLong(0L)
+      val results = (1 until 16).par
+        .map { _ =>
+          var current: Option[Parameters] = None
+          var finished = false
+          while (!finished) {
+            val loc = location.getAndIncrement()
+            val p = getParametersRevert(loc)
+            if (seedsPairs.exists(bound => bound._1 <= p.seed && p.seed <= (bound._1 + bound._2))) {
+              if (getParameters(p.seed) == p) {
+                current = Some(p)
+                finished = true
+              }
             }
-            param
           }
+          current
         }
-        .map(_.collect { case Some(p) => p })
+        .collect { case Some(x) => x }
+      results.foreach(c => println(c.location))
+      results.tail.toList.foldLeft(results.headOption) { (acc, c) =>
+        acc.filter(_.location < c.location).orElse(Some(c))
+      }
     }
   }
 
@@ -128,22 +137,17 @@ object D5 extends Base {
 
   def part1(value: String): Long = {
     val almanac = parse(value)
-    val items = almanac.resultsFromSeeds
-    items
-      .map(_._2.location)
-      .min
+    val items = almanac.lowestParameter
+    items.map(_.location).getOrElse(-1)
   }
   def part2(value: String): Long = {
     val almanac = parse(value)
-    Await.result(
-      almanac.resultsFromPairs
-        .map(_.map(_.location).min),
-      Duration.Inf
-    )
+    val items = almanac.lowestParameterFromParis
+    items.map(_.location).getOrElse(-1)
   }
   def main(args: Array[String]): Unit = {
     println(part1(read))
-    println(part2(read))
+    println(part2(read)) // 4917124
   }
 
 }

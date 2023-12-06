@@ -41,6 +41,6 @@ class D5Spec extends munit.FunSuite {
   }
 
   test("part2") {
-    assertEquals(D5.part2(sample), 1L)
+    assertEquals(D5.part2(sample), 46L)
   }
 }
