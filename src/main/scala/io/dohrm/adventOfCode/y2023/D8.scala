@@ -3,64 +3,76 @@ import scala.annotation.tailrec
 import scala.collection.{SortedMap, mutable}
 
 object D8 extends Base {
-  sealed trait Move
+  sealed trait Move {
+    def next(item: Item): String
+  }
   object Move {
-    case object Left extends Move
-    case object Right extends Move
+    case object Left extends Move {
+      override def next(item: Item): String = item.left
+    }
+    case object Right extends Move {
+      override def next(item: Item): String = item.right
+    }
   }
-  case class Node(name: String, left: String, right: String)
-  sealed trait BiTree {
-    def name: String
-    def exists(name: String): Boolean
-  }
-  case class Branch(name: String, left: Option[BiTree], right: Option[BiTree]) extends BiTree {
-    override def exists(name: String): Boolean = left.exists(_.exists(name)) || right.exists(_.exists(name))
-  }
-  case class Leaf(name: String) extends BiTree {
-    override def exists(name: String): Boolean = name == this.name
-  }
+  case class Item(name: String, left: String, right: String)
 
-  case class Tree(nodes: List[Node]) {
-    lazy val nodesByName: Map[String, Node] = nodes.map(n => n.name -> n).toMap
-    def asBiTree(first: String, last: String): BiTree = {
-      val cache = mutable.HashMap[String, Option[BiTree]]()
-      def build(name: String): Option[BiTree] = {
-        cache.getOrElse(
-          name, {
-            if (name == last) {
-              Some(Leaf(name))
-            } else if (name == first) {
-              None
-            } else {
-              val n = nodesByName(name)
-              (build(n.left), build(n.right)) match {
-                case (None, None) => Some(Leaf(name))
-                case (a, b)       => Some(Branch(name, a, b))
-              }
-            }
-          }
+  case class Tree(nodes: List[Item]) {
+    lazy val nodesByName: Map[String, Item] = nodes.map(n => n.name -> n).toMap
+
+    private def loop[C](start: C, next: (C, Move) => C, end: C => Boolean, moves: List[Move]): Long = {
+      var count = 0
+      var current = start
+      var move = 0
+      while (!end(current)) {
+        current = next(current, moves(move))
+        move = if (move == moves.length - 1) 0 else move + 1
+        count += 1
+      }
+      count
+    }
+
+    def countE1(moves: List[Move]): Long = {
+      loop[Item](
+        nodesByName("AAA"),
+        (c, move) => nodesByName(move.next(c)),
+        _.name == "ZZZ",
+        moves
+      )
+    }
+
+    def countE2v1(moves: List[Move]): Long = {
+      loop[List[Item]](
+        nodes.filter(_.name.endsWith("A")),
+        (c, move) => c.map(r => nodesByName(move.next(r))),
+        _.forall(_.name.endsWith("Z")),
+        moves
+      )
+    }
+
+    def countE2v2(moves: List[Move]): Long = {
+      val items = nodes.filter(_.name.endsWith("A"))
+      val positions = items.map(v =>
+        loop[Item](
+          v,
+          (c, move) => nodesByName(move.next(c)),
+          _.name.endsWith("Z"),
+          moves
         )
+      )
+
+      // LCM
+      val ranges = positions.toArray
+      (0 until (ranges.length - 1)).foreach { idx =>
+        val greater = Math.max(ranges(idx), ranges(idx + 1))
+        var currentMul = greater
+        while (currentMul % ranges(idx) != 0 || currentMul % ranges(idx + 1) != 0) {
+          currentMul += greater
+        }
+        ranges.update(idx + 1, currentMul)
       }
-      val b = nodesByName(first)
-      Branch(first, build(b.left), build(b.right))
-    }
-    def applyMoves(starting: String, moves: List[Move]): Node = {
-      var res = nodesByName(starting)
-      moves.foreach {
-        case Move.Left =>
-          res = nodesByName(res.left)
-        case Move.Right =>
-          res = nodesByName(res.right)
-      }
-      res
+      ranges.last
     }
 
-    def countUntil(from: String, to: String): Int = {
-      val biTree = asBiTree(from, to)
-      println(biTree)
-      println(biTree.exists(to))
-      0
-    }
   }
   def parse(input: String): (List[Move], Tree) = {
     val items = input.split("\n")
@@ -74,18 +86,19 @@ object D8 extends Base {
         val base = item.split('=')
         val name = base.head.trim
         val lr = base.last.trim.stripPrefix("(").stripSuffix(")").split(",").map(_.trim)
-        Node(name, lr.head, lr.last)
+        Item(name, lr.head, lr.last)
       }
     moves.toList -> Tree(nodes.toList)
   }
 
-  def part1(value: String): Int = {
+  def part1(value: String): Long = {
     val (moves, tree) = parse(value)
-    val afterMove = tree.applyMoves("AAA", moves)
-    println(tree.asBiTree(afterMove.name, "ZZZ"))
-    tree.countUntil(afterMove.name, "ZZZ")
+    tree.countE1(moves)
   }
-  def part2(value: String): Int = 0
+  def part2(value: String): Long = {
+    val (moves, tree) = parse(value)
+    tree.countE2v2(moves)
+  }
   def main(args: Array[String]): Unit = {
     println(part1(read))
     println(part2(read))
